@@ -30,6 +30,6 @@ export class CreateUserDTO {
 
   @IsOptional()
   @ValidateNested() // Tells Nest to validate the inner ProfileDTO
-  @Type(() => CreateProfileDTO)
+  // @Type(() => CreateProfileDTO) // replaced by adding transformOptions: {enableImplicitConversion: true,}, in validationPipe in main.ts
   profile?: CreateProfileDTO ;
 }

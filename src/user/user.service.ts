@@ -12,7 +12,7 @@ import { Repository } from 'typeorm';
 import { CreateUserDTO } from 'src/user/DTO/create-user.dto';
 import { Profile } from 'src/profile/profile.entity';
 import { ConfigService } from '@nestjs/config';
-import { UserAlreadyExistsException } from 'CustomException/user-already-exists.exception';
+import { UserAlreadyExistsException } from 'src/CustomException/user-already-exists.exception';
 
 @Injectable()
 export class UserService {

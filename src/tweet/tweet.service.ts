@@ -6,6 +6,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CreateTweetDTO } from './DTO/create-tweet.dto';
 import { HashtagService } from 'src/hashtag/hashtag.service';
 import { UpdateTweetDto } from './DTO/update-tweet.dto';
+import { PaginationQueryDto } from 'src/common/pagination/dto/pagination-query.dto';
+import { GetTweetQueryDto } from './DTO/get-tweet-query.dto';
+import { PaginationProvider } from 'src/common/pagination/pagination.provider';
 
 @Injectable()
 export class TweetService {
@@ -14,6 +17,7 @@ export class TweetService {
     @InjectRepository(Tweet)
     private readonly tweetRepository: Repository<Tweet>,
     private readonly hashtagService: HashtagService,
+    private readonly paginationProvider:PaginationProvider
   ) {}
 
   public async createTweet(createTweetDTO: CreateTweetDTO) {
@@ -36,26 +40,35 @@ export class TweetService {
     );
   }
 
-  async getTweetsByUserId(userId: number) {
-
+  async getTweetsByUserId(userId: number, pageQueryDto: PaginationQueryDto) {
     const user = await this.userService.getUserById(userId);
 
-    if(!user){
-      throw new NotFoundException(`can't find user with id ${userId}`)
+    if (!user) {
+      throw new NotFoundException(`can't find user with id ${userId}`);
     }
 
-    return await this.tweetRepository.find({
-      where: {
-        user: {
-          id: userId,
-        },
-      },
-      // relations: ['user'],
-      relations: {
-        user: true,
-        hashtags: true,
-      },
-    });
+    // return await this.tweetRepository.find({ // commented to wrap it with the pagination using the pagination provider
+    //   where: {
+    //     user: {
+    //       id: userId,
+    //     },
+    //   },
+    //   // relations: ['user'],
+    //   // relations: {
+    //   //   user: true,
+    //   //   hashtags: true,
+    //   // }, //removed after enbaling eager loading in tweet.entity in order to do eager lodaing from the pagination provider
+    //   skip: getTweetQueryDto.limit * (getTweetQueryDto.page - 1),
+    //   take: getTweetQueryDto.limit,
+    // });
+    //limit : 10 , page : 1 , skip 0 and take 1-10 records
+    //limit : 10 , page : 2 , skip 10 and take 11-20 records
+
+    
+    return await this.paginationProvider.paginateQuery(
+      pageQueryDto , this.tweetRepository , {user:{id:userId}}
+    );
+
   }
 
   async updateTweet(updateTweetDto: UpdateTweetDto) {
@@ -79,6 +92,6 @@ export class TweetService {
 
   async deleteTweet(id: number) {
     await this.tweetRepository.delete({ id });
-    return { deleted: true , id};
+    return { deleted: true, id };
   }
 }
