@@ -4,12 +4,13 @@ import { UserService } from './user.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { Profile } from 'src/profile/profile.entity';
+import { PaginationModule } from 'src/common/pagination/pagination.module';
 
 @Module({
   controllers: [UserController],
   providers: [UserService],
   exports: [UserService],
-  imports: [
+  imports: [PaginationModule,
     TypeOrmModule.forFeature([User , Profile]),
     // forwardRef(() => AuthModule),
   ],

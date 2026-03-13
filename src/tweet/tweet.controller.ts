@@ -27,7 +27,6 @@ export class TweetController {
       userId,
       paginationQueryDto,
     );
-    console.log(paginationQueryDto);
     return res;
   }
 

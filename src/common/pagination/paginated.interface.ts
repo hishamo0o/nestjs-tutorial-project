@@ -4,6 +4,7 @@ export interface Paginated<T> {
     itmesPerPage: number;
     totalItems: number;
     currentPage: number;
+    totalPages: number;
   };
   links: {
     first: string;

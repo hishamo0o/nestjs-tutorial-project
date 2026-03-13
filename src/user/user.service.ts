@@ -1,9 +1,7 @@
 import {
-  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
-  NotFoundException,
   RequestTimeoutException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +11,9 @@ import { CreateUserDTO } from 'src/user/DTO/create-user.dto';
 import { Profile } from 'src/profile/profile.entity';
 import { ConfigService } from '@nestjs/config';
 import { UserAlreadyExistsException } from 'src/CustomException/user-already-exists.exception';
+import { Paginated } from 'src/common/pagination/paginated.interface';
+import { PaginationProvider } from 'src/common/pagination/pagination.provider';
+import { PaginationQueryDto } from 'src/common/pagination/dto/pagination-query.dto';
 
 @Injectable()
 export class UserService {
@@ -22,17 +23,19 @@ export class UserService {
     private readonly configService: ConfigService,
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Profile) private profileRepository: Repository<Profile>,
+    private readonly paginateProvider:PaginationProvider
   ) {}
 
-  async getAllUsers() {
+  async getAllUsers(paginateQueryDto:PaginationQueryDto):Promise<Paginated<User>> {
     try {
-      const evn = this.configService.get<string>('ENV_MODE');
-      console.log(evn);
-      return await this.userRepository.find({
-        relations: {
-          profile: true, //for eager loading for profile only instead of doing it in the relationship in user entity
-        },
-      });
+      // const evn = this.configService.get<string>('ENV_MODE');
+      // console.log(evn);
+      // return await this.userRepository.find({
+      //   relations: {
+      //     profile: true, //for eager loading for profile only instead of doing it in the relationship in user entity
+      //   },
+      // });
+      return await this.paginateProvider.paginateQuery(paginateQueryDto , this.userRepository , undefined , ['profile'])
     } catch (error) {
       if (error.code === 'ECONNREFUSED') {
         throw new RequestTimeoutException(
@@ -40,7 +43,8 @@ export class UserService {
           { description: `couldn't connect to the DB` },
         );
       }
-      console.log(error);
+      // console.log(error);
+      throw error ;
     }
   }
 
