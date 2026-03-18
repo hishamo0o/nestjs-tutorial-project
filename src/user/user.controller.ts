@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDTO } from 'src/user/DTO/create-user.dto';
 import { PaginationQueryDto } from 'src/common/pagination/dto/pagination-query.dto';
+import { AuthorizeGuard } from 'src/auth/guards/authorize.guard';
 
 @Controller('user')
 export class UserController {
@@ -10,6 +11,7 @@ export class UserController {
     getAllUsers(@Query() paginatQueryDto:PaginationQueryDto){
         return this.userService.getAllUsers(paginatQueryDto);
     }
+    @UseGuards(AuthorizeGuard)
     @Get(':id')
     async getUserById(@Param('id' , ParseIntPipe) id:number){
         return await this.userService.getUserById(id);

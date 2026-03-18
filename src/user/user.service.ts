@@ -1,8 +1,12 @@
 import {
+  forwardRef,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
+  NotFoundException,
   RequestTimeoutException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './user.entity';
@@ -14,19 +18,24 @@ import { UserAlreadyExistsException } from 'src/CustomException/user-already-exi
 import { Paginated } from 'src/common/pagination/paginated.interface';
 import { PaginationProvider } from 'src/common/pagination/pagination.provider';
 import { PaginationQueryDto } from 'src/common/pagination/dto/pagination-query.dto';
+import { HashingProvider } from 'src/auth/provider/hashing.provider';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UserService {
   constructor(
-    // @Inject(forwardRef(() => AuthService))
-    // private readonly authService: AuthService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
     private readonly configService: ConfigService,
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Profile) private profileRepository: Repository<Profile>,
-    private readonly paginateProvider:PaginationProvider
+    private readonly paginateProvider: PaginationProvider,
+    private readonly hashProvider: HashingProvider,
   ) {}
 
-  async getAllUsers(paginateQueryDto:PaginationQueryDto):Promise<Paginated<User>> {
+  async getAllUsers(
+    paginateQueryDto: PaginationQueryDto,
+  ): Promise<Paginated<User>> {
     try {
       // const evn = this.configService.get<string>('ENV_MODE');
       // console.log(evn);
@@ -35,7 +44,12 @@ export class UserService {
       //     profile: true, //for eager loading for profile only instead of doing it in the relationship in user entity
       //   },
       // });
-      return await this.paginateProvider.paginateQuery(paginateQueryDto , this.userRepository , undefined , ['profile'])
+      return await this.paginateProvider.paginateQuery(
+        paginateQueryDto,
+        this.userRepository,
+        undefined,
+        ['profile'],
+      );
     } catch (error) {
       if (error.code === 'ECONNREFUSED') {
         throw new RequestTimeoutException(
@@ -44,7 +58,7 @@ export class UserService {
         );
       }
       // console.log(error);
-      throw error ;
+      throw error;
     }
   }
 
@@ -57,7 +71,7 @@ export class UserService {
         `couldn't find user with id ${id}`,
         HttpStatus.NOT_FOUND,
         {
-          description: `excpetions happened cos we are trying to get a user with id : ${id} which is not found `,//only for developers 
+          description: `excpetions happened cos we are trying to get a user with id : ${id} which is not found `, //only for developers
           // cause:
         },
       );
@@ -73,10 +87,10 @@ export class UserService {
       });
 
       if (userExist) {
-        let message:'userName'|'email';
+        let message: 'userName' | 'email';
         if (userExist.userName === userDTO.userName) message = 'userName';
         else message = 'email';
-        throw new UserAlreadyExistsException(message , userDTO[message])
+        throw new UserAlreadyExistsException(message, userDTO[message]);
       }
 
       // //Create a Profile
@@ -84,7 +98,10 @@ export class UserService {
       //  , only the user will be created even u specified cascade on the insert ,
       //  but anyway if a profile is not provided or null ,
       //  it won't create it , but when providing an empty profile it will create it automatically when the user is created and save it.
-      const user = this.userRepository.create(userDTO);
+      const user = this.userRepository.create({
+        ...userDTO,
+        password: await this.hashProvider.hashPassword(userDTO.password),
+      });
 
       await this.userRepository.save(user);
 
@@ -106,5 +123,18 @@ export class UserService {
     // await this.profileRepository.delete(user.profile.id);
     // }
     return { deleted: true };
+  }
+
+  public async findUserByUserName(userName: string) {
+    let user: User | null = null;
+    try {
+      user = await this.userRepository.findOneBy({ userName });
+    } catch (error) {
+      throw new RequestTimeoutException(error, {
+        description: `user with userName:${userName} is not found`,
+      });
+    }
+    if(!user) throw new UnauthorizedException(`user with userName ${userName} is not found`);
+    return user;
   }
 }
